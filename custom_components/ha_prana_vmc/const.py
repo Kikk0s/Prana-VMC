@@ -1,7 +1,7 @@
 """Constants for the Prana Recuperator integration."""
 from typing import Final
 
-DOMAIN: Final = "prana_recuperator"
+DOMAIN: Final = "DOMAIN = "ha_prana_vmc""
 
 # Configuration
 CONF_HOST: Final = "host"
