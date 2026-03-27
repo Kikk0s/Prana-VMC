@@ -1,4 +1,4 @@
-"""Config flow for Prana Recuperator integration."""
+"""Config flow for the HA Prana VMC integration."""
 from __future__ import annotations
 
 import logging
@@ -17,10 +17,12 @@ from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
+DEFAULT_DEVICE_NAME = "HA Prana VMC"
+
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): str,
-        vol.Optional(CONF_NAME, default="Prana Recuperator"): str,
+        vol.Optional(CONF_NAME, default=DEFAULT_DEVICE_NAME): str,
     }
 )
 
@@ -29,24 +31,17 @@ async def validate_input(hass, host: str) -> dict[str, Any]:
     """Validate the user input allows us to connect."""
     session = async_get_clientsession(hass)
     api = PranaApiClient(host, session=session)
-
-    try:
-        state = await api.test_connection()
-        return {"title": f"Prana ({host})"}
-    finally:
-        # Don't close session as it belongs to Home Assistant
-        pass
+    await api.test_connection()
+    return {"title": f"Prana ({host})"}
 
 
 class PranaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle a config flow for Prana Recuperator."""
+    """Handle a config flow for HA Prana VMC."""
 
     VERSION = 1
 
     def __init__(self) -> None:
         """Initialize the config flow."""
-        self._host: str | None = None
-        self._name: str | None = None
         self._discovered_host: str | None = None
         self._discovered_name: str | None = None
 
@@ -58,21 +53,22 @@ class PranaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             host = user_input[CONF_HOST]
-            name = user_input.get(CONF_NAME, "Prana Recuperator")
+            name = user_input.get(CONF_NAME, DEFAULT_DEVICE_NAME)
 
-            # Check if already configured
             self._async_abort_entries_match({CONF_HOST: host})
 
             try:
-                info = await validate_input(self.hass, host)
+                await validate_input(self.hass, host)
             except PranaConnectionError:
                 errors["base"] = "cannot_connect"
             except PranaApiError:
                 errors["base"] = "unknown"
-            except Exception:  # pylint: disable=broad-except
+            except Exception:
                 _LOGGER.exception("Unexpected exception")
                 errors["base"] = "unknown"
             else:
+                await self.async_set_unique_id(host)
+                self._abort_if_unique_id_configured(updates={CONF_HOST: host})
                 return self.async_create_entry(
                     title=name,
                     data={
@@ -92,7 +88,8 @@ class PranaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle zeroconf discovery."""
         host = discovery_info.host
-        name = discovery_info.properties.get("label", "Prana Recuperator")
+        raw_name = discovery_info.properties.get("label", DEFAULT_DEVICE_NAME)
+        name = raw_name.decode() if isinstance(raw_name, bytes) else str(raw_name)
 
         _LOGGER.debug(
             "Discovered Prana device: host=%s, name=%s, properties=%s",
@@ -101,14 +98,12 @@ class PranaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             discovery_info.properties,
         )
 
-        # Set unique ID based on host
         await self.async_set_unique_id(host)
         self._abort_if_unique_id_configured(updates={CONF_HOST: host})
 
         self._discovered_host = host
         self._discovered_name = name
 
-        # Try to connect to verify device
         try:
             await validate_input(self.hass, host)
         except (PranaConnectionError, PranaApiError):
@@ -122,7 +117,7 @@ class PranaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle confirmation of discovered device."""
         if user_input is not None:
-            name = user_input.get(CONF_NAME, self._discovered_name)
+            name = user_input.get(CONF_NAME, self._discovered_name or DEFAULT_DEVICE_NAME)
             return self.async_create_entry(
                 title=name,
                 data={
@@ -136,13 +131,14 @@ class PranaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=vol.Schema(
                 {
                     vol.Optional(
-                        CONF_NAME, default=self._discovered_name
+                        CONF_NAME,
+                        default=self._discovered_name or DEFAULT_DEVICE_NAME,
                     ): str,
                 }
             ),
             description_placeholders={
                 "host": self._discovered_host,
-                "name": self._discovered_name,
+                "name": self._discovered_name or DEFAULT_DEVICE_NAME,
             },
         )
 
@@ -155,7 +151,7 @@ class PranaConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class PranaOptionsFlow(config_entries.OptionsFlow):
-    """Handle Prana options."""
+    """Handle HA Prana VMC options."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
@@ -174,9 +170,7 @@ class PranaOptionsFlow(config_entries.OptionsFlow):
                 {
                     vol.Optional(
                         CONF_NAME,
-                        default=self.config_entry.data.get(
-                            CONF_NAME, "Prana Recuperator"
-                        ),
+                        default=self.config_entry.data.get(CONF_NAME, DEFAULT_DEVICE_NAME),
                     ): str,
                 }
             ),
