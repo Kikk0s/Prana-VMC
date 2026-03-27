@@ -1,4 +1,4 @@
-"""The Prana Recuperator integration."""
+"""The HA Prana VMC integration."""
 from __future__ import annotations
 
 import logging
@@ -23,24 +23,21 @@ PLATFORMS: list[Platform] = [
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Prana Recuperator from a config entry."""
+    """Set up HA Prana VMC from a config entry."""
     host = entry.data[CONF_HOST]
-    name = entry.data.get(CONF_NAME, "Prana Recuperator")
+    name = entry.data.get(CONF_NAME, "HA Prana VMC")
 
     session = async_get_clientsession(hass)
     api = PranaApiClient(host, session=session)
 
     coordinator = PranaCoordinator(hass, api, name)
-
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
     entry.async_on_unload(entry.add_update_listener(async_update_options))
-
     return True
 
 
