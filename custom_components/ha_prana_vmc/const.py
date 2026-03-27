@@ -1,5 +1,4 @@
 """Constants for the HA Prana VMC integration."""
-
 from typing import Final
 
 DOMAIN: Final = "ha_prana_vmc"
