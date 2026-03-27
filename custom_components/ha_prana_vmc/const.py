@@ -1,7 +1,8 @@
-"""Constants for the Prana Recuperator integration."""
+"""Constants for the HA Prana VMC integration."""
+
 from typing import Final
 
-DOMAIN: Final = "DOMAIN = "ha_prana_vmc""
+DOMAIN: Final = "ha_prana_vmc"
 
 # Configuration
 CONF_HOST: Final = "host"
@@ -54,15 +55,14 @@ SWITCH_TYPE_WINTER: Final = "winter"
 
 # Brightness levels mapping
 BRIGHTNESS_LEVELS: Final = {
-    0: 0,    # Screen off
-    1: 1,    # Level 1 (minimum)
-    2: 2,    # Level 2
-    3: 4,    # Level 3
-    4: 8,    # Level 4
-    5: 16,   # Level 5
-    6: 32,   # Level 6 (maximum)
+    0: 0,
+    1: 1,
+    2: 2,
+    3: 4,
+    4: 8,
+    5: 16,
+    6: 32,
 }
-
 BRIGHTNESS_VALUES: Final = {v: k for k, v in BRIGHTNESS_LEVELS.items()}
 
 # Speed constants
