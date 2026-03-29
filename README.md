@@ -121,31 +121,29 @@ Se mDNS/Zeroconf è supportato dalla rete/router, il dispositivo comparirà in:
 ---
 
 ##  Icone preset (icons.json)
-Questa integrazione include: onfig/custom_components/prana_vmc/icons.json
-per mostrare icone diverse sui preset della climate (luna per night, razzo per boost, ecc.).
-Richiede Home Assistant Core 2024.2+.
+- Questa integrazione include: onfig/custom_components/prana_vmc/icons.json
+- per mostrare icone diverse sui preset della climate (luna per night, razzo per boost, ecc.).
+- Richiede Home Assistant Core 2024.2+.
 
 
 ##  Troubleshooting
 > Non compare in discovery
-Verifica che HA e Prana siano nella stessa rete
-Alcuni router bloccano mDNS: usa la configurazione manuale via IP
+- Verifica che HA e Prana siano nella stessa rete
+- Alcuni router bloccano mDNS: usa la configurazione manuale via IP
 > Valori non si aggiornano / entità unavailable
-Verifica con ping che l’IP sia raggiungibile
-Riavvia VMC e Home Assistant
-Controlla i log
-Abilita log di debug (opzionale)
-
-> In configuration.yaml:
-logger:
-  default: warning
-  logs:
-    custom_components.prana_vmc: debug
-Riavvia e controlla: Impostazioni → Sistema → Log
+- Verifica con ping che l’IP sia raggiungibile
+- Riavvia VMC e Home Assistant
+- Controlla i log
+> Abilita log di debug (opzionale)
+- In configuration.yaml:
+- logger:
+- default: warning
+- logs: custom_components.prana_vmc: debug
+- Riavvia e controlla: Impostazioni → Sistema → Log
 
 ##  Crediti
-Progetto originale di riferimento: dCode91/ha-prana-local-wifi
-https://github.com/dCode91/ha-prana-local-wifi
+- Progetto originale di riferimento: dCode91/ha-prana-local-wifi
+- https://github.com/dCode91/ha-prana-local-wifi
 
 ##  Licenza
 Questo progetto è rilasciato sotto licenza MIT - consultare il file LICENSE per i dettagli.
