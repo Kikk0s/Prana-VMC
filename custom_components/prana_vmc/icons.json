@@ -1,0 +1,57 @@
+{
+  "entity": {
+    "climate": {
+      "prana_climate": {
+        "default": "mdi:air-filter",
+        "state_attributes": {
+          "preset_mode": {
+            "default": "mdi:tune",
+            "state": {
+              "manual": "mdi:hand",
+              "none": "mdi:hand",
+              "off": "mdi:hand",
+              "Manual": "mdi:hand",
+              "MANUAL": "mdi:hand",
+              "auto": "mdi:fan-auto",
+              "auto_plus": "mdi:fan-plus",
+              "night": "mdi:weather-night",
+              "boost": "mdi:rocket-launch",
+              "winter": "mdi:snowflake"
+            }
+          },
+          "fan_mode": {
+            "default": "mdi:fan"
+          }
+        }
+      }
+    },
+    "switch": {
+      "bound": { "default": "mdi:link-variant" },
+      "heater": { "default": "mdi:radiator" },
+      "winter": { "default": "mdi:snowflake" },
+      "auto": { "default": "mdi:fan-auto" },
+      "auto_plus": { "default": "mdi:fan-plus" },
+      "night": { "default": "mdi:weather-night" },
+      "boost": { "default": "mdi:rocket-launch" }
+    },
+    "number": {
+      "brightness": { "default": "mdi:brightness-6" },
+      "supply_speed_control": { "default": "mdi:fan" },
+      "extract_speed_control": { "default": "mdi:fan" },
+      "bounded_speed_control": { "default": "mdi:sync" }
+    },
+    "sensor": {
+      "inside_temperature": { "default": "mdi:home-thermometer" },
+      "inside_temperature_2": { "default": "mdi:home-thermometer-outline" },
+      "outside_temperature": { "default": "mdi:thermometer" },
+      "outside_temperature_2": { "default": "mdi:thermometer-lines" },
+      "humidity": { "default": "mdi:water-percent" },
+      "co2": { "default": "mdi:molecule-co2" },
+      "voc": { "default": "mdi:air-filter" },
+      "air_pressure": { "default": "mdi:gauge" },
+      "extract_speed": { "default": "mdi:fan" },
+      "supply_speed": { "default": "mdi:fan" },
+      "bounded_speed": { "default": "mdi:sync" }
+    }
+  }
+}
