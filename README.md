@@ -17,7 +17,7 @@ Altri modelli o versioni firmware potrebbero esporre campi diversi tramite API l
 
 ## Requisiti
 
-- Recuperatore Prana con **Wi-Fi** e **API locale** attiva
+- Recuperatore Prana con **Wi-Fi** 
 - **Serie ERP con firmware 49** (ambiente di test di riferimento)
 - Home Assistant nella stessa rete locale del dispositivo
 - (Consigliato) Home Assistant Core **2024.2+** per supporto `icons.json` (icone preset)
@@ -86,8 +86,7 @@ Se mDNS/Zeroconf è supportato dalla rete/router, il dispositivo comparirà in:
 
 ---
 
-## Entità (esempio reale: “Matrimoniale VMC”)
-
+## Entità 
 > Le entità dipendono dal modello/firmware. Sui Prana **serie ERP firmware 49** nella mia installazione vengono create queste.
 
 ### Climate
@@ -121,42 +120,23 @@ Se mDNS/Zeroconf è supportato dalla rete/router, il dispositivo comparirà in:
 
 ---
 
-## Lovelace — esempio card Climate con preset
-
-### Tile card (preset con icone)
-```yaml
-type: tile
-entity: climate.TUA_ENTITA
-name: Prana VMC
-features:
-  - type: climate-hvac-modes
-    hvac_modes: [fan_only, "off"]
-  - type: climate-fan-modes
-    style: dropdown
-    fan_modes: ["off","1","2","3","4","5","6"]
-  - type: climate-preset-modes
-    style: icons
-    preset_modes: [manual, auto, auto_plus, night, boost, winter]
-
-
 ##  Icone preset (icons.json)
-Questa integrazione può includere:
-config/custom_components/prana_vmc/icons.json
+Questa integrazione include: onfig/custom_components/prana_vmc/icons.json
 per mostrare icone diverse sui preset della climate (luna per night, razzo per boost, ecc.).
 Richiede Home Assistant Core 2024.2+.
 
 
 ##  Troubleshooting
-Non compare in discovery
+> Non compare in discovery
 Verifica che HA e Prana siano nella stessa rete
 Alcuni router bloccano mDNS: usa la configurazione manuale via IP
-Valori non si aggiornano / entità unavailable
+> Valori non si aggiornano / entità unavailable
 Verifica con ping che l’IP sia raggiungibile
 Riavvia VMC e Home Assistant
 Controlla i log
 Abilita log di debug (opzionale)
 
-In configuration.yaml:
+> In configuration.yaml:
 logger:
   default: warning
   logs:
