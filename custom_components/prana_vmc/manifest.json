@@ -4,13 +4,13 @@
   "codeowners": [],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/your-repo/prana_vmc",
+  "documentation": "https://github.com/Kikk0s/Prana-VMC//prana_vmc",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/your-repo/prana_vmc/issues",
+  "issue_tracker": "https://github.com/Kikk0s/Prana-VMC/prana_vmc/issues",
   "requirements": [
     "aiohttp>=3.8.0"
   ],
-  "version": "1.1.2",
+  "version": "1.0.1",
   "zeroconf": [
     "_prana._tcp.local."
   ]
