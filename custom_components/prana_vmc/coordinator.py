@@ -113,29 +113,25 @@ class PranaCoordinator(DataUpdateCoordinator[PranaState]):
             self._pending_patch.clear()
     
         # Brightness "sticky" workaround:
-        # Some firmwares report brightness as 0 (or stale) in /getState right after setBrightness.
-        # If the user has set a brightness > 0, avoid snapping back to 0/invalid until the device
-        # reports a valid non-zero value (or until the user explicitly sets 0).
+        # Some devices always report brightness as 0 in /getState even when it's not.
         if self._last_set_brightness is not None:
-            fetched = getattr(state, "brightness", None)
-            try:
-                fetched_i = int(fetched) if fetched is not None else None
-            except (TypeError, ValueError):
-                fetched_i = None
-
-            valid_raw = {0, 1, 2, 4, 8, 16, 32}
-
-            if fetched_i in valid_raw and fetched_i not in (None, 0):
-                # Device reports a real value -> trust it and update cache
-                self._last_set_brightness = int(fetched_i)
+            fetched_brightness = getattr(state, "brightness", None)
+            if fetched_brightness not in (None, 0):
+                # Device reports a real value -> trust it
+                self._last_set_brightness = int(fetched_brightness)
             else:
-                # fetched is 0/None/invalid -> keep last set value if it was > 0
-                if int(self._last_set_brightness) > 0:
+                # Treat 0 as unreliable only while the unit is running
+                any_fan_on = bool(
+                    getattr(state, "bounded_is_on", False)
+                    or getattr(state, "supply_is_on", False)
+                    or getattr(state, "extract_is_on", False)
+                )
+                if any_fan_on and self._last_set_brightness != 0:
                     try:
-                        state = replace(state, brightness=int(self._last_set_brightness))
+                        state = replace(state, brightness=self._last_set_brightness)
                     except TypeError:
-                        setattr(state, "brightness", int(self._last_set_brightness))
-
+                        setattr(state, "brightness", self._last_set_brightness)
+    
         return state
 
     def _save_current_speeds(self, current_state: PranaState) -> None:

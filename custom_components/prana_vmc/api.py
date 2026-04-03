@@ -15,6 +15,8 @@ from .const import (
     FAN_TYPE_BOUNDED,
     FAN_TYPE_EXTRACT,
     FAN_TYPE_SUPPLY,
+    BRIGHTNESS_LEVELS,
+    BRIGHTNESS_VALUES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,6 +121,29 @@ class PranaState:
 
             return min(s, 60)
 
+        def normalize_brightness_raw(value: Any) -> int:
+            """Normalize brightness to the raw device scale (0,1,2,4,8,16,32).
+
+            Some firmwares report brightness as a UI level 0..6.
+            In this integration we store brightness internally as raw so the Number entity
+            can consistently convert it to level 0..6.
+            """
+            default_raw = BRIGHTNESS_LEVELS.get(6, 32)
+            try:
+                b = int(float(value))
+            except (TypeError, ValueError):
+                return default_raw
+
+            # If firmware reports level 0..6, map to raw
+            if 0 <= b <= 6:
+                return BRIGHTNESS_LEVELS.get(b, default_raw)
+
+            # Otherwise assume raw if it matches known raw values
+            if b in BRIGHTNESS_VALUES:
+                return b
+
+            return default_raw
+
         def normalize_max_speed(value: Any) -> int:
             s = normalize_speed(value)
             return 60 if s == 0 else s
@@ -140,15 +165,6 @@ class PranaState:
             elif bound and bounded_speed_raw == 10:
                 night_effective = True
 
-        # Brightness:
-        # The API should return a raw value (0, 1, 2, 4, 8, 16, 32).
-        # IMPORTANT: do NOT coerce 0 to a default (it causes the HA UI to snap back).
-        brightness_val = data.get("brightness", 32)
-        try:
-            brightness_raw = int(brightness_val) if brightness_val is not None else 32
-        except (TypeError, ValueError):
-            brightness_raw = 32
-
         return cls(
             extract_speed=normalize_speed(extract_data.get("speed", 0)),
             extract_is_on=parse_bool(extract_data.get("is_on", False)),
@@ -166,7 +182,7 @@ class PranaState:
             winter=parse_bool(data.get("winter", False)),
             night=night_effective,
             boost=parse_bool(data.get("boost", False)),
-            brightness=brightness_raw,
+            brightness=normalize_brightness_raw(data.get("brightness")),
             inside_temperature=parse_temperature(data.get("inside_temperature")),
             inside_temperature_2=parse_temperature(data.get("inside_temperature_2")),
             outside_temperature=parse_temperature(data.get("outside_temperature")),
