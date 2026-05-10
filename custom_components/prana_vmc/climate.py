@@ -1,10 +1,12 @@
 """Climate platform for Prana VMC.
 
-This exposes a single ClimateEntity so you can use the native "climate" cards in Lovelace.
-The entity focuses on *ventilation*:
-- HVAC mode: off / fan_only
-- Fan mode: 0..6 (mapped to the device "bounded" speed 0..60)
-- Presets: manual, auto, auto_plus, night, boost, winter
+Aligned to real ERP fw49 behavior:
+- HVAC modes: OFF / FAN_ONLY (no HEAT selector)
+- Presets in climate: manual, auto, auto_plus, night, boost (winter excluded)
+- Winter/Heater are independent flags and may coexist with Auto/Auto+/Night.
+  They are shown via hvac_action in the thermostat center label:
+    - winter -> DEFROSTING (Sbrinamento)
+    - heater -> PREHEATING (Preriscaldamento)
 """
 from __future__ import annotations
 
@@ -31,7 +33,6 @@ from .const import (
     SWITCH_TYPE_BOOST,
     SWITCH_TYPE_BOUND,
     SWITCH_TYPE_NIGHT,
-    SWITCH_TYPE_WINTER,
 )
 from .coordinator import PranaCoordinator
 from .entity import PranaEntity
@@ -46,15 +47,14 @@ PRESET_AUTO = "auto"
 PRESET_AUTO_PLUS = "auto_plus"
 PRESET_NIGHT = "night"
 PRESET_BOOST = "boost"
-PRESET_WINTER = "winter"
 
+# Winter intentionally removed (it can coexist with other modes)
 PRESET_MODES: list[str] = [
     PRESET_MANUAL,
     PRESET_AUTO,
     PRESET_AUTO_PLUS,
     PRESET_NIGHT,
     PRESET_BOOST,
-    PRESET_WINTER,
 ]
 
 
@@ -71,7 +71,6 @@ async def async_setup_entry(
 class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
     """Climate entity representing the overall Prana ventilation (bounded fans)."""
 
-
     _attr_hvac_modes = [HVACMode.OFF, HVACMode.FAN_ONLY]
     _attr_supported_features = (
         ClimateEntityFeature.FAN_MODE
@@ -82,26 +81,21 @@ class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
     _attr_fan_modes = FAN_MODES
     _attr_preset_modes = PRESET_MODES
 
-    # IMPORTANT: used by translations/icons.json
+    # used by translations/icons.json
     _attr_has_entity_name = True
     _attr_name = None
     _attr_translation_key = "prana_climate"
 
     def __init__(self, coordinator: PranaCoordinator, entry_id: str) -> None:
         super().__init__(coordinator, entry_id)
-        # Keep the same unique_id to avoid creating a "new" entity in HA
         self._attr_unique_id = f"{coordinator.api.host}_ventilation"
-
-    # --- Read-only properties from coordinator memory ---
 
     @property
     def temperature_unit(self) -> str:
-        """Return the temperature unit."""
         return self.hass.config.units.temperature_unit
 
     @property
     def current_temperature(self) -> float | None:
-        """Return the current indoor temperature (if available)."""
         data = self.coordinator.data
         if data is None:
             return None
@@ -113,7 +107,6 @@ class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
 
     @property
     def hvac_mode(self) -> HVACMode:
-        """Return current HVAC mode (off / fan_only)."""
         data = self.coordinator.data
         if data is None:
             return HVACMode.OFF
@@ -127,24 +120,37 @@ class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
 
     @property
     def hvac_action(self) -> HVACAction | None:
-        """Return the current HVAC action."""
-        data = self.coordinator.data
-        if data is None:
-            return None
-        return HVACAction.OFF if self.hvac_mode == HVACMode.OFF else HVACAction.FAN
+        """Center label for thermostat card.
 
-    @property
-    def fan_mode(self) -> str | None:
-        """Return current fan mode (off/1..6) based on bounded speed.
-
-        If Bound Mode is disabled on the device, this climate entity is not the active controller,
-        so we report "off" for the fan-mode feature.
+        - winter ON -> DEFROSTING (Sbrinamento)
+        - heater ON -> PREHEATING (Preriscaldamento)
+        - else -> FAN
         """
         data = self.coordinator.data
         if data is None:
             return None
 
-        if not data.bound:
+        if self.hvac_mode == HVACMode.OFF:
+            return HVACAction.OFF
+
+        winter_on = bool(getattr(data, "winter", False))
+        heater_on = bool(getattr(data, "heater", False))
+
+        if winter_on:
+            return HVACAction.DEFROSTING
+        if heater_on:
+            return HVACAction.PREHEATING
+
+        return HVACAction.FAN
+
+    @property
+    def fan_mode(self) -> str | None:
+        data = self.coordinator.data
+        if data is None:
+            return None
+
+        # If bound mode disabled, this climate isn't the active controller
+        if not getattr(data, "bound", False):
             return FAN_MODE_OFF
 
         if not data.is_fan_on(FAN_TYPE_BOUNDED) or data.bounded_speed <= 0:
@@ -157,35 +163,28 @@ class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
 
     @property
     def preset_mode(self) -> str | None:
-        """Return current preset mode, derived from device flags."""
+        """Preset is only about boost/night/auto+/auto/manual. Winter excluded."""
         data = self.coordinator.data
         if data is None:
             return None
 
-        # priority (stable)
-        if data.boost:
+        if getattr(data, "boost", False):
             return PRESET_BOOST
-        if data.night:
+        if getattr(data, "night", False):
             return PRESET_NIGHT
-        if data.auto_plus:
+        if getattr(data, "auto_plus", False):
             return PRESET_AUTO_PLUS
-        if data.auto:
+        if getattr(data, "auto", False):
             return PRESET_AUTO
-        if data.winter:
-            return PRESET_WINTER
         return PRESET_MANUAL
 
-    # --- Helpers ---
-
     async def _ensure_bound_mode(self) -> None:
-        """Ensure 'bound' mode is enabled, so bounded speed controls both fans."""
         data = self.coordinator.data
-        if data is not None and data.bound:
+        if data is not None and getattr(data, "bound", False):
             return
         await self.coordinator.async_set_switch(SWITCH_TYPE_BOUND, True)
 
     async def _set_bounded_speed_level(self, level: int) -> None:
-        """Set bounded fan speed level (0..6)."""
         level = max(0, min(6, int(level)))
 
         data = self.coordinator.data
@@ -201,10 +200,7 @@ class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
         if not is_on:
             await self.coordinator.async_set_fan_on(True, FAN_TYPE_BOUNDED)
 
-    # --- Control methods called by HA services/UI ---
-
     async def async_set_hvac_mode(self, hvac_mode: HVACMode) -> None:
-        """Set HVAC mode."""
         if hvac_mode == HVACMode.OFF:
             await self.coordinator.async_power_off()
             return
@@ -223,30 +219,22 @@ class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
         raise ValueError(f"Unsupported HVAC mode: {hvac_mode}")
 
     async def async_turn_on(self) -> None:
-        """Turn on (maps to FAN_ONLY)."""
         await self.async_set_hvac_mode(HVACMode.FAN_ONLY)
 
     async def async_turn_off(self) -> None:
-        """Turn off."""
         await self.async_set_hvac_mode(HVACMode.OFF)
 
     async def async_set_fan_mode(self, fan_mode: str) -> None:
-        """Set fan mode (off/1..6)."""
         await self._ensure_bound_mode()
 
         if fan_mode == FAN_MODE_OFF:
             await self._set_bounded_speed_level(0)
             return
 
-        try:
-            level = int(fan_mode)
-        except ValueError as err:
-            raise ValueError(f"Invalid fan mode: {fan_mode}") from err
-
+        level = int(fan_mode)
         await self._set_bounded_speed_level(level)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
-        """Set preset mode."""
         if preset_mode not in PRESET_MODES:
             raise ValueError(f"Unsupported preset mode: {preset_mode}")
 
@@ -254,12 +242,12 @@ class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
             await self.async_set_hvac_mode(HVACMode.FAN_ONLY)
 
         if preset_mode == PRESET_MANUAL:
+            # IMPORTANT: do NOT touch winter/heater here (they may be enabled automatically)
             for sw in (
                 SWITCH_TYPE_BOOST,
                 SWITCH_TYPE_NIGHT,
                 SWITCH_TYPE_AUTO_PLUS,
                 SWITCH_TYPE_AUTO,
-                SWITCH_TYPE_WINTER,
             ):
                 await self.coordinator.async_set_switch(sw, False)
             return
@@ -278,8 +266,4 @@ class PranaRecuperatorClimate(PranaEntity, ClimateEntity):
 
         if preset_mode == PRESET_BOOST:
             await self.coordinator.async_set_switch(SWITCH_TYPE_BOOST, True)
-            return
-
-        if preset_mode == PRESET_WINTER:
-            await self.coordinator.async_set_switch(SWITCH_TYPE_WINTER, True)
             return
