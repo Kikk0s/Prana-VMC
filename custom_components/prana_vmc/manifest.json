@@ -10,7 +10,7 @@
   "requirements": [
     "aiohttp>=3.8.0"
   ],
-  "version": "1.0.4",
+  "version": "1.0.5",
   "zeroconf": [
     "_prana._tcp.local."
   ]
